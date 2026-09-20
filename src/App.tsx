@@ -1,50 +1,95 @@
-import { useState } from "react";
-import reactLogo from "./assets/react.svg";
-import { invoke } from "@tauri-apps/api/core";
-import "./App.css";
+import React, { useState } from "react";
+import { ThemeProvider } from "@/context/ThemeContext";
+import { AuthProvider, useAuth } from "@/context/AuthContext";
+import { AppShell, NavTab } from "@/components/layout";
+import { AuthPage } from "@/pages/Auth/AuthPage";
+import { OverviewPage } from "@/pages/Overview/OverviewPage";
+import { DevicesPage } from "@/pages/Devices/DevicesPage";
+import { DiagnosticsPage } from "@/pages/Diagnostics/DiagnosticsPage";
+import { SettingsPage } from "@/pages/Settings/SettingsPage";
+import type { DeviceDto } from "@/types";
+import logoAsecna from "@/assets/Logo_ASECNA.png";
 
-function App() {
-  const [greetMsg, setGreetMsg] = useState("");
-  const [name, setName] = useState("");
+const MainContent: React.FC = () => {
+  const { user, isLoading } = useAuth();
+  const [activeTab, setActiveTab] = useState<NavTab>("overview");
+  const [selectedDeviceForDiagnostic, setSelectedDeviceForDiagnostic] = useState<DeviceDto | null>(null);
+  const [openAddDeviceModal, setOpenAddDeviceModal] = useState(false);
 
-  async function greet() {
-    // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-    setGreetMsg(await invoke("greet", { name }));
+  // Splash loading screen while checking auth and SQLite status
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-background text-foreground select-none">
+        <div className="flex flex-col items-center gap-4 animate-in fade-in duration-500">
+          <img
+            src={logoAsecna}
+            alt="ASECNA"
+            className="h-16 w-auto object-contain animate-pulse"
+          />
+          <div className="flex flex-col items-center text-center">
+            <h2 className="text-base font-bold tracking-wider uppercase text-foreground">
+              ASECNA Network Monitor
+            </h2>
+            <p className="text-xs text-muted-foreground mt-1">
+              Connexion au moteur de supervision et vérification SQLite...
+            </p>
+          </div>
+          <div className="w-48 h-1.5 bg-muted rounded-full overflow-hidden mt-2">
+            <div className="h-full bg-primary rounded-full animate-[progress_1.5s_ease-in-out_infinite]" />
+          </div>
+        </div>
+      </div>
+    );
   }
 
+  // If user is not authenticated or bootstrap is required, render AuthPage
+  if (!user) {
+    return <AuthPage />;
+  }
+
+  const handleDiagnoseDevice = (device: DeviceDto) => {
+    setSelectedDeviceForDiagnostic(device);
+    setActiveTab("diagnostics");
+  };
+
+  const handleOpenAddDevice = () => {
+    setOpenAddDeviceModal(true);
+    setActiveTab("devices");
+  };
+
   return (
-    <main className="container">
-      <h1>Welcome to Tauri + React</h1>
-
-      <div className="row">
-        <a href="https://vite.dev" target="_blank">
-          <img src="/vite.svg" className="logo vite" alt="Vite logo" />
-        </a>
-        <a href="https://tauri.app" target="_blank">
-          <img src="/tauri.svg" className="logo tauri" alt="Tauri logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <p>Click on the Tauri, Vite, and React logos to learn more.</p>
-
-      <form
-        className="row"
-        onSubmit={(e) => {
-          e.preventDefault();
-          greet();
-        }}
-      >
-        <input
-          id="greet-input"
-          onChange={(e) => setName(e.currentTarget.value)}
-          placeholder="Enter a name..."
+    <AppShell activeTab={activeTab} onTabChange={setActiveTab}>
+      {activeTab === "overview" && (
+        <OverviewPage
+          onNavigate={(tab) => setActiveTab(tab)}
+          onOpenAddDevice={handleOpenAddDevice}
         />
-        <button type="submit">Greet</button>
-      </form>
-      <p>{greetMsg}</p>
-    </main>
+      )}
+
+      {activeTab === "devices" && (
+        <DevicesPage
+          onDiagnoseDevice={handleDiagnoseDevice}
+          openAddModalInitially={openAddDeviceModal}
+          onCloseAddModal={() => setOpenAddDeviceModal(false)}
+        />
+      )}
+
+      {activeTab === "diagnostics" && (
+        <DiagnosticsPage initialSelectedDevice={selectedDeviceForDiagnostic} />
+      )}
+
+      {activeTab === "settings" && <SettingsPage />}
+    </AppShell>
+  );
+};
+
+export function App() {
+  return (
+    <ThemeProvider>
+      <AuthProvider>
+        <MainContent />
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
 

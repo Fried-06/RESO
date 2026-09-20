@@ -1,0 +1,138 @@
+@import 'tailwindcss';
+@plugin 'lightswind/plugin';
+@layer base {
+  :root {
+    --font-sans: 'Lexend Deca', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+    /* Light Theme Tokens */
+    --background: #f8fafc;
+    --foreground: #0f172a;
+    --surface: #ffffff;
+    --surface-hover: #f1f5f9;
+    --card: #ffffff;
+    --card-foreground: #0f172a;
+    --popover: #ffffff;
+    --popover-foreground: #0f172a;
+
+    --primary: #0b2545;
+    --primary-foreground: #ffffff;
+    --secondary: #e2e8f0;
+    --secondary-foreground: #0f172a;
+    --muted: #f1f5f9;
+    --muted-foreground: #64748b;
+    --accent: #d97706;
+    --accent-foreground: #ffffff;
+
+    --border: #e2e8f0;
+    --input: #cbd5e1;
+    --ring: #0b2545;
+
+    /* Status Colors */
+    --status-operational: #059669;
+    --status-operational-bg: #ecfdf5;
+    --status-operational-border: #a7f3d0;
+
+    --status-degraded: #d97706;
+    --status-degraded-bg: #fffbeb;
+    --status-degraded-border: #fde68a;
+
+    --status-offline: #dc2626;
+    --status-offline-bg: #fef2f2;
+    --status-offline-border: #fecaca;
+
+    --status-unknown: #64748b;
+    --status-unknown-bg: #f8fafc;
+    --status-unknown-border: #e2e8f0;
+
+    /* Chart CSS Variables */
+    --chart-background: #ffffff;
+    --chart-foreground: #0f172a;
+    --chart-foreground-muted: #64748b;
+    --chart-label: #475569;
+    --chart-line-primary: #0284c7;
+    --chart-1: #059669;
+    --chart-2: #d97706;
+    --chart-3: #dc2626;
+    --chart-4: #0284c7;
+    --chart-5: #64748b;
+  }
+
+  .dark {
+    /* Dark Theme Tokens (Aviation Cockpit & Radar Console Aesthetic) */
+    --background: #080d16;
+    --foreground: #f8fafc;
+    --surface: #0f172a;
+    --surface-hover: #1e293b;
+    --card: #0f172a;
+    --card-foreground: #f8fafc;
+    --popover: #0f172a;
+    --popover-foreground: #f8fafc;
+
+    --primary: #38bdf8;
+    --primary-foreground: #080d16;
+    --secondary: #1e293b;
+    --secondary-foreground: #f8fafc;
+    --muted: #1e293b;
+    --muted-foreground: #94a3b8;
+    --accent: #fbbf24;
+    --accent-foreground: #080d16;
+
+    --border: #1e293b;
+    --input: #334155;
+    --ring: #38bdf8;
+
+    /* Status Colors */
+    --status-operational: #34d399;
+    --status-operational-bg: rgba(5, 150, 105, 0.15);
+    --status-operational-border: rgba(52, 211, 153, 0.3);
+
+    --status-degraded: #fbbf24;
+    --status-degraded-bg: rgba(217, 119, 6, 0.15);
+    --status-degraded-border: rgba(251, 191, 36, 0.3);
+
+    --status-offline: #f87171;
+    --status-offline-bg: rgba(220, 38, 38, 0.15);
+    --status-offline-border: rgba(248, 113, 113, 0.3);
+
+    --status-unknown: #94a3b8;
+    --status-unknown-bg: rgba(148, 163, 184, 0.1);
+    --status-unknown-border: rgba(148, 163, 184, 0.25);
+
+    /* Chart CSS Variables */
+    --chart-background: #0f172a;
+    --chart-foreground: #f8fafc;
+    --chart-foreground-muted: #94a3b8;
+    --chart-label: #cbd5e1;
+    --chart-line-primary: #38bdf8;
+    --chart-1: #34d399;
+    --chart-2: #fbbf24;
+    --chart-3: #f87171;
+    --chart-4: #38bdf8;
+    --chart-5: #94a3b8;
+  }
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--background);
+  color: var(--foreground);
+}
+
+/* Custom subtle scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted-foreground);
+}
