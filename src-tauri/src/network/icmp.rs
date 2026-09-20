@@ -51,11 +51,17 @@ pub async fn ping_target(target: &str, timeout_duration: Duration) -> PingResult
     #[cfg(windows)]
     {
         // Execute unprivileged Windows ICMP ping via winping
+        // Convert timeout_duration to milliseconds for winping (u32, capped at u32::MAX)
+        let timeout_ms_u32 = timeout_duration.as_millis().min(u32::MAX as u128) as u32;
+
         let ping_future = tokio::task::spawn_blocking(move || {
-            let pinger = match winping::Pinger::new() {
+            let mut pinger = match winping::Pinger::new() {
                 Ok(p) => p,
                 Err(e) => return Err(format!("Failed to initialize ICMP pinger: {:?}", e)),
             };
+
+            // set_timeout() configures the Windows IcmpSendEcho timeout directly
+            pinger.set_timeout(timeout_ms_u32);
 
             let mut buffer = winping::Buffer::new();
             match pinger.send(ip, &mut buffer) {
