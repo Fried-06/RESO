@@ -11,12 +11,18 @@ import {
   Shield,
   Clock,
   Zap,
+  Users,
+  Trash2,
+  Plus,
+  UserCheck,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
 import * as settingsService from "@/services/tauri/settings";
 import * as authService from "@/services/tauri/auth";
+import * as usersService from "@/services/tauri/users";
 import type { SettingsDto, UpdateSettingsRequest } from "@/types";
+import type { UserDtoFull, UserRole } from "@/types/user";
 import {
   Button,
   Card,
@@ -26,7 +32,16 @@ import {
   CardContent,
   Input,
   Skeleton,
+  Badge,
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+  Dialog,
 } from "@/components/ui";
+
 
 export const SettingsPage: React.FC = () => {
   const { token, user } = useAuth();
@@ -52,6 +67,93 @@ export const SettingsPage: React.FC = () => {
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [passwordSuccessMsg, setPasswordSuccessMsg] = useState<string | null>(null);
   const [passwordErrorMsg, setPasswordErrorMsg] = useState<string | null>(null);
+
+  // User Administration (RBAC) state
+  const [usersList, setUsersList] = useState<UserDtoFull[]>([]);
+  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
+  const [usersError, setUsersError] = useState<string | null>(null);
+  const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
+  const [newUsername, setNewUsername] = useState("");
+  const [newUserPassword, setNewUserPassword] = useState("");
+  const [newUserRole, setNewUserRole] = useState<UserRole>("operator");
+  const [isCreatingUser, setIsCreatingUser] = useState(false);
+  const [userActionError, setUserActionError] = useState<string | null>(null);
+  const [userActionSuccess, setUserActionSuccess] = useState<string | null>(null);
+
+  const loadUsers = useCallback(async () => {
+    if (!token || user?.role !== "admin") return;
+    setIsLoadingUsers(true);
+    setUsersError(null);
+    try {
+      const data = await usersService.getUsers(token);
+      setUsersList(data);
+    } catch (err: unknown) {
+      console.error("Failed to load users:", err);
+      const msg = err instanceof Error ? err.message : String(err);
+      setUsersError(msg || "Impossible de charger la liste des utilisateurs.");
+    } finally {
+      setIsLoadingUsers(false);
+    }
+  }, [token, user?.role]);
+
+  useEffect(() => {
+    if (user?.role === "admin") {
+      loadUsers();
+    }
+  }, [user?.role, loadUsers]);
+
+  const handleCreateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!token) return;
+    setIsCreatingUser(true);
+    setUserActionError(null);
+    setUserActionSuccess(null);
+    try {
+      await usersService.adminCreateUser(token, {
+        username: newUsername.trim(),
+        password: newUserPassword,
+        role: newUserRole,
+      });
+      setUserActionSuccess(`Utilisateur ${newUsername} créé avec succès.`);
+      setNewUsername("");
+      setNewUserPassword("");
+      setNewUserRole("operator");
+      setIsAddUserModalOpen(false);
+      await loadUsers();
+      setTimeout(() => setUserActionSuccess(null), 4000);
+    } catch (err: unknown) {
+      console.error("Failed to create user:", err);
+      const msg = err instanceof Error ? err.message : String(err);
+      setUserActionError(msg || "Échec de création de l'utilisateur.");
+    } finally {
+      setIsCreatingUser(false);
+    }
+  };
+
+  const handleDeleteUser = async (targetUser: UserDtoFull) => {
+    if (!token) return;
+    if (targetUser.id === user?.id) {
+      setUserActionError("Impossible de supprimer votre propre compte.");
+      return;
+    }
+    const confirmed = window.confirm(
+      `Confirmez-vous la suppression définitive du compte « ${targetUser.username} » ?`
+    );
+    if (!confirmed) return;
+
+    setUserActionError(null);
+    try {
+      await usersService.adminDeleteUser(token, targetUser.id);
+      setUserActionSuccess(`Compte ${targetUser.username} supprimé.`);
+      await loadUsers();
+      setTimeout(() => setUserActionSuccess(null), 4000);
+    } catch (err: unknown) {
+      console.error("Failed to delete user:", err);
+      const msg = err instanceof Error ? err.message : String(err);
+      setUserActionError(msg || "Échec de suppression de l'utilisateur.");
+    }
+  };
+
 
   const fetchSettings = useCallback(async () => {
     if (!token) return;
@@ -398,6 +500,200 @@ export const SettingsPage: React.FC = () => {
         </div>
       </div>
 
+      {/* User Administration (RBAC) - Strictly visible to Admin */}
+      {user?.role === "admin" && (
+        <Card className="border-border">
+          <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3">
+            <div>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Users className="h-4 w-4 text-primary" />
+                Gestion des Utilisateurs & Contrôle d'Accès (RBAC)
+              </CardTitle>
+              <CardDescription>
+                Comptes opérateurs et administrateurs autorisés sur le poste ASECNA
+              </CardDescription>
+            </div>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => setIsAddUserModalOpen(true)}
+              className="gap-1.5 self-start sm:self-auto"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              <span>Nouvel Utilisateur</span>
+            </Button>
+          </CardHeader>
+          <CardContent>
+            {userActionSuccess && (
+              <div className="mb-4 flex items-center gap-2 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 text-xs">
+                <CheckCircle2 className="h-4 w-4 shrink-0" />
+                <span>{userActionSuccess}</span>
+              </div>
+            )}
+            {userActionError && (
+              <div className="mb-4 flex items-center gap-2 p-3 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-600 text-xs">
+                <AlertCircle className="h-4 w-4 shrink-0" />
+                <span>{userActionError}</span>
+              </div>
+            )}
+            {usersError && (
+              <div className="mb-4 flex items-center gap-2 p-3 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-600 text-xs">
+                <AlertCircle className="h-4 w-4 shrink-0" />
+                <span>{usersError}</span>
+              </div>
+            )}
+
+            {isLoadingUsers ? (
+              <div className="space-y-2 py-2">
+                <Skeleton className="h-9 w-full" />
+                <Skeleton className="h-9 w-full" />
+              </div>
+            ) : usersList.length === 0 ? (
+              <p className="text-xs text-muted-foreground py-3 italic">
+                Aucun compte utilisateur trouvé.
+              </p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Identifiant</TableHead>
+                    <TableHead>Rôle</TableHead>
+                    <TableHead>Statut</TableHead>
+                    <TableHead>Date Création</TableHead>
+                    <TableHead className="text-right">Action</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {usersList.map((u) => {
+                    const isSelf = u.id === user?.id;
+                    return (
+                      <TableRow key={u.id}>
+                        <TableCell className="font-semibold text-foreground flex items-center gap-2">
+                          <UserCheck className="h-3.5 w-3.5 text-muted-foreground" />
+                          <span>{u.username}</span>
+                          {isSelf && (
+                            <span className="text-[10px] text-primary font-normal bg-primary/10 px-1.5 py-0.5 rounded">
+                              (Vous)
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={u.role === "admin" ? "default" : "secondary"}
+                            className="text-[10px] uppercase font-bold"
+                          >
+                            {u.role === "admin" ? "Administrateur" : "Opérateur"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <span
+                            className={`inline-flex items-center gap-1.5 text-xs ${
+                              u.is_active ? "text-emerald-600 font-medium" : "text-muted-foreground"
+                            }`}
+                          >
+                            <span
+                              className={`h-1.5 w-1.5 rounded-full ${
+                                u.is_active ? "bg-emerald-500" : "bg-muted-foreground"
+                              }`}
+                            />
+                            {u.is_active ? "Actif" : "Inactif"}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-xs font-mono text-muted-foreground">
+                          {new Date(u.created_at).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            disabled={isSelf}
+                            onClick={() => handleDeleteUser(u)}
+                            className="h-7 px-2 text-rose-500 hover:text-rose-600 hover:bg-rose-500/10"
+                            title={isSelf ? "Impossible de supprimer votre propre compte" : "Supprimer"}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Add User Modal */}
+      <Dialog
+        isOpen={isAddUserModalOpen}
+        onClose={() => setIsAddUserModalOpen(false)}
+        title="Créer un nouveau compte utilisateur"
+        description="Définit les identifiants et le niveau d'habilitation RBAC de l'opérateur"
+      >
+        <form onSubmit={handleCreateUser} className="space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-foreground mb-1">
+              Nom d'utilisateur (Login)
+            </label>
+            <Input
+              type="text"
+              placeholder="ex: op_tour_controle"
+              value={newUsername}
+              onChange={(e) => setNewUsername(e.target.value)}
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-foreground mb-1">
+              Mot de passe initial
+            </label>
+            <Input
+              type="password"
+              placeholder="Minimum 8 caractères"
+              value={newUserPassword}
+              onChange={(e) => setNewUserPassword(e.target.value)}
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-foreground mb-1">
+              Niveau de privilèges (Rôle)
+            </label>
+            <select
+              value={newUserRole}
+              onChange={(e) => setNewUserRole(e.target.value as UserRole)}
+              className="flex h-10 w-full rounded-lg border border-input bg-background px-3 py-1 text-sm text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            >
+              <option value="operator">Opérateur (Supervision & Sondes)</option>
+              <option value="admin">Administrateur (Contrôle complet & RBAC)</option>
+            </select>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-3 border-t border-border">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setIsAddUserModalOpen(false)}
+            >
+              Annuler
+            </Button>
+            <Button
+              type="submit"
+              variant="primary"
+              size="sm"
+              isLoading={isCreatingUser}
+            >
+              <Plus className="h-3.5 w-3.5 mr-1" />
+              Créer le compte
+            </Button>
+          </div>
+        </form>
+      </Dialog>
+
       {/* System Information Card */}
       <Card className="border-border/60 bg-muted/20">
         <CardHeader className="pb-2">
@@ -432,3 +728,4 @@ export const SettingsPage: React.FC = () => {
     </div>
   );
 };
+

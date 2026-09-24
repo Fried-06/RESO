@@ -106,7 +106,9 @@ fn test_argon2id_hashing_and_verification() {
 async fn test_in_memory_session_lifecycle() {
     let session_mgr = SessionManager::new(2);
 
-    let (token, expires_at) = session_mgr.create_session(42, "admin_test").await;
+    let (token, expires_at) = session_mgr
+        .create_session(42, "admin_test", asecreso_lib::models::UserRole::Admin)
+        .await;
     assert!(!token.is_empty());
     assert!(expires_at > chrono::Utc::now());
 
@@ -117,9 +119,14 @@ async fn test_in_memory_session_lifecycle() {
         .expect("Session should be valid");
     assert_eq!(session.user_id, 42);
     assert_eq!(session.username, "admin_test");
+    assert_eq!(session.role, asecreso_lib::models::UserRole::Admin);
+
+    // Admin validation must succeed for Admin
+    assert!(session_mgr.validate_admin_session(&token).await.is_ok());
 
     // Unknown token must be rejected
     assert!(session_mgr.validate_session("unknown-token").await.is_err());
+
 
     // Logout invalidates session
     session_mgr.invalidate_session(&token).await;

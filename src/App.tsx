@@ -6,6 +6,7 @@ import { AuthPage } from "@/pages/Auth/AuthPage";
 import { OverviewPage } from "@/pages/Overview/OverviewPage";
 import { DevicesPage } from "@/pages/Devices/DevicesPage";
 import { DiagnosticsPage } from "@/pages/Diagnostics/DiagnosticsPage";
+import { DiscoveryPage } from "@/pages/Discovery/DiscoveryPage";
 import { SettingsPage } from "@/pages/Settings/SettingsPage";
 import type { DeviceDto } from "@/types";
 import logoAsecna from "@/assets/Logo_ASECNA.png";
@@ -77,6 +78,8 @@ const MainContent: React.FC = () => {
       {activeTab === "diagnostics" && (
         <DiagnosticsPage initialSelectedDevice={selectedDeviceForDiagnostic} />
       )}
+
+      {activeTab === "discovery" && <DiscoveryPage />}
 
       {activeTab === "settings" && <SettingsPage />}
     </AppShell>

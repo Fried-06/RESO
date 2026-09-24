@@ -160,13 +160,14 @@ impl DeviceRepository {
         l3_latency_ms: Option<f64>,
         l3_error: Option<&str>,
         l7_summary: &str,
+        explanation: Option<&str>,
     ) -> Result<(), AppError> {
         let now = Utc::now().to_rfc3339();
 
         sqlx::query(
             r#"
-            INSERT INTO diagnostic_history (device_id, overall_status, l3_success, l3_latency_ms, l3_error, l7_summary, executed_at)
-            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+            INSERT INTO diagnostic_history (device_id, overall_status, l3_success, l3_latency_ms, l3_error, l7_summary, explanation, executed_at)
+            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
             "#,
         )
         .bind(device_id)
@@ -175,6 +176,7 @@ impl DeviceRepository {
         .bind(l3_latency_ms)
         .bind(l3_error)
         .bind(l7_summary)
+        .bind(explanation)
         .bind(&now)
         .execute(pool)
         .await
@@ -191,7 +193,7 @@ impl DeviceRepository {
     ) -> Result<Vec<DiagnosticHistoryRecord>, AppError> {
         let records = sqlx::query_as::<_, DiagnosticHistoryRecord>(
             r#"
-            SELECT id, device_id, overall_status, l3_success, l3_latency_ms, l3_error, l7_summary, executed_at
+            SELECT id, device_id, overall_status, l3_success, l3_latency_ms, l3_error, l7_summary, explanation, executed_at
             FROM diagnostic_history
             WHERE device_id = ?1
             ORDER BY id DESC

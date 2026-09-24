@@ -46,18 +46,25 @@ asecreso/
     ├── types/
     │   ├── auth.ts                          # Contrats TypeScript Auth (UserDto, LoginRequest, etc.)
     │   ├── device.ts                        # Contrats TypeScript Équipements (DeviceDto, ServiceConfig, etc.)
-    │   ├── diagnostic.ts                    # Contrats TypeScript Diagnostics (Ping, Tcp, Http, Overview, History)
+    │   ├── diagnostic.ts                    # Contrats TypeScript Diagnostics (Ping, Tcp, Http, Overview, History, ARP, Latency)
     │   ├── settings.ts                      # Contrats TypeScript Paramètres (SettingsDto, UpdateSettingsRequest)
+    │   ├── alert.ts                         # Contrats TypeScript Alertes & Notifications (AlertDto, AlertSummary)
+    │   ├── discovery.ts                     # Contrats TypeScript Découverte Réseau (DiscoveredDevice, DiscoveryProgress)
+    │   ├── user.ts                          # Contrats TypeScript Gestion Utilisateurs RBAC (UserDtoFull, UserRole)
     │   └── index.ts                         # Barrel export des types
     │
     ├── services/
     │   └── tauri/
-    │       ├── client.ts                    # Wrapper d'invocation IPC avec fallback sécurisé
+    │       ├── client.ts                    # Wrapper d'invocation IPC avec gestion unifiée des erreurs
     │       ├── auth.ts                      # Invocations des commandes Tauri d'authentification
     │       ├── devices.ts                   # Invocations des commandes Tauri CRUD équipements
     │       ├── diagnostics.ts               # Invocations des sondes ICMP, TCP, HTTP et de l'overview
     │       ├── settings.ts                  # Invocations des commandes de configuration du moteur
+    │       ├── alerts.ts                    # Invocations des alertes et résolutions d'incidents
+    │       ├── discovery.ts                 # Invocations du scan subnet asynchrone et progression
+    │       ├── users.ts                     # Invocations administratives RBAC (comptes opérateurs)
     │       └── index.ts                     # Barrel export des services Tauri
+
     │
     ├── components/
     │   ├── ui/                              # Composants d'interface Lightswind
@@ -78,10 +85,13 @@ asecreso/
     │   │   ├── LineChart.tsx                # Graphique temporel SVG avec gradient et réticule interactif
     │   │   └── index.ts                     # Barrel export charts
     │   │
+    │   ├── alerts/
+    │   │   └── AlertsModal.tsx              # Centre de gestion des alertes et notifications réelles
+    │   │
     │   └── layout/                          # Structure et enveloppe applicative
-    │       ├── Header.tsx                   # En-tête institutionnel, état moteur, profil et bascule de thème
-    │       ├── Dock.tsx                     # Dock de navigation flottant Lightswind
-    │       ├── AppShell.tsx                 # Conteneur global intégrant Header, Main et Dock
+    │       ├── Header.tsx                   # En-tête institutionnel, badge alertes, état moteur, profil et bascule
+    │       ├── Dock.tsx                     # Dock de navigation flottant Lightswind (Overview, Parc, Découverte, Diag, Config)
+    │       ├── AppShell.tsx                 # Conteneur global intégrant Header, Main, Dock et AlertsModal
     │       └── index.ts                     # Barrel export layout
     │
     └── pages/
@@ -92,10 +102,12 @@ asecreso/
         ├── Devices/
         │   ├── DevicesPage.tsx              # Inventaire du parc, recherche, filtres, actions rapides
         │   └── DeviceFormDialog.tsx         # Dialogue d'ajout/modification avec services L7
+        ├── Discovery/
+        │   └── DiscoveryPage.tsx            # Balayage de sous-réseau (ex: 10.28.0.0/16), jauge et ajout d'équipement
         ├── Diagnostics/
-        │   └── DiagnosticsPage.tsx          # Sondes L3/L7, outils ad-hoc (Ping/TCP/HTTP) et historique
+        │   └── DiagnosticsPage.tsx          # Sondes L3/L7, résolution ARP, explicabilité, sondes ad-hoc et historique
         └── Settings/
-            └── SettingsPage.tsx             # Paramètres de scan, timeouts, concurrence et sécurité
+            └── SettingsPage.tsx             # Paramètres moteur, sécurité, et section RBAC administrateur
 ```
 
 ---
@@ -239,18 +251,36 @@ L'interface évite tout effet néon artificiel ou apparence de template SaaS gra
 - **Recherche & Filtrage** : Recherche fluide par texte et filtre déroulant par statut (`Opérationnel`, `Dégradé`, `Hors ligne`, `En attente`).
 - **Dialogue de gestion** (`DeviceFormDialog.tsx`) : Permet de configurer le nom, l'IP, la description et d'ajouter dynamiquement des services applicatifs (soit un port TCP, soit un endpoint HTTP).
 
-### 4. Diagnostics (`DiagnosticsPage.tsx`)
-- **Sous-onglet Diagnostic Équipement** : Sélectionne un équipement configuré et exécute simultanément la sonde L3 (ICMP) et toutes les sondes L7 associées. Affiche un bilan consolidé avec accordéon détaillé par couche et tableau des 10 dernières sondes issues de la base SQLite.
+### 4. Découverte Réseau (`DiscoveryPage.tsx`)
+- **Scan de plage IP / CIDR** : Scannage d'un sous-réseau complet (par défaut `10.28.0.0/16` ou réseau local personnalisé) avec réglage du niveau de concurrence (10 à 200 sondes parallèles).
+- **Progression en temps réel** : Jauge animée, pourcentage complété, ratio adresses scannées / total, et débit de sondes.
+- **Tableau des équipements détectés** : Affichage dynamique de l'adresse IP, du nom d'hôte résolu, de l'adresse MAC (si disponible via table ARP) et de la latence RTT.
+- **Ajout direct à l'inventaire** : Bouton « Ajouter » permettant d'injecter immédiatement une machine découverte dans le parc officiel supervisé.
+
+### 5. Diagnostics (`DiagnosticsPage.tsx`)
+- **Sous-onglet Diagnostic Équipement** : Sélectionne un équipement configuré et exécute simultanément la sonde L3 (ICMP), la résolution ARP locale, l'analyse d'explicabilité et toutes les sondes L7 associées.
+- **Explicabilité multicouche & Causes de dégradation** : Bannière contextuelle expliquant précisément pourquoi un équipement est dégradé ou hors ligne, avec statistiques de latence issues de l'historique réel (Moyenne, Min, Pic / Max, nombre d'échantillons).
+- **Détails Couche L3 & ARP** : Accordéon dédié affichant le statut ICMP, le RTT mesuré et la résolution de l'adresse MAC via le cache ARP Windows.
 - **Sous-onglet Sondes Ad-hoc** : Permet de tester instantanément n'importe quelle adresse IP ou nom d'hôte sans configuration préalable :
   - Sonde Ping ICMP avec WinPing.
   - Sonde TCP avec tentative de connexion sur port spécifique (ex: 22, 80, 443).
   - Sonde HTTP/HTTPS avec relevé du code d'état et du temps de réponse.
 
-### 5. Paramètres Système (`SettingsPage.tsx`)
+### 6. Paramètres Système (`SettingsPage.tsx`)
 - **Moteur de supervision** : Configuration de l'intervalle d'échantillonnage automatique (en secondes), du délai d'attente limite (*timeout* en ms), du seuil maximal de sondes asynchrones concurrentes et du scan au démarrage.
 - **Affichage** : Sélecteur visuel direct pour basculer entre le mode Jour (clair) et le mode Nuit (sombre).
-- **Sécurité** : Formulaire de modification sécurisée du mot de passe de l'opérateur connecté.
+- **Sécurité de l'opérateur** : Formulaire de modification sécurisée du mot de passe du compte connecté.
+- **Gestion des Utilisateurs & Contrôle d'Accès RBAC** (réservé aux Administrateurs) :
+  - Tableau récapitulatif de tous les comptes avec badges de rôle (`Administrateur` ou `Opérateur`), statut actif/inactif et date de création.
+  - Modale de création d'un nouvel utilisateur avec attribution de rôle.
+  - Suppression sécurisée (protection contre l'auto-suppression et suppression du dernier admin).
 - **Informations système** : Fiche technique rappelant l'architecture Tauri 2, la version de SQLite et le moteur de sonde native WinPing.
+
+### 7. Centre d'Alertes Réseau (`AlertsModal.tsx`)
+- **Badge dynamique dans le Header** : Décompte des alertes non lues mis à jour par scrutation périodique (15s).
+- **Consultation et filtrage** : Affichage par niveau de sévérité (Critique, Avertissement, Info), filtrage « Toutes » ou « Non résolues ».
+- **Actions rapides** : Marquer une alerte comme lue, marquer tout comme lu, marquer comme résolu.
+
 
 ---
 

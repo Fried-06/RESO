@@ -3,12 +3,13 @@ import {
   LayoutDashboard,
   Server,
   Activity,
+  Radar,
   Sliders,
 } from "lucide-react";
 import { Dock as LightswindDock } from "@/components/lightswind/dock";
 import { cn } from "@/lib/utils";
 
-export type NavTab = "overview" | "devices" | "diagnostics" | "settings";
+export type NavTab = "overview" | "devices" | "diagnostics" | "discovery" | "settings";
 
 export interface DockProps {
   activeTab: NavTab;
@@ -25,6 +26,7 @@ const NAV_ITEMS: NavItemDef[] = [
   { id: "overview", label: "Vue d'ensemble", icon: LayoutDashboard },
   { id: "devices", label: "Équipements", icon: Server },
   { id: "diagnostics", label: "Diagnostics", icon: Activity },
+  { id: "discovery", label: "Découverte", icon: Radar },
   { id: "settings", label: "Paramètres", icon: Sliders },
 ];
 

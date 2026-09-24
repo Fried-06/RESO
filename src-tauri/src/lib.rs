@@ -51,6 +51,11 @@ pub fn run() {
             commands::logout,
             commands::get_current_user,
             commands::change_password,
+            // User Administration (RBAC) commands
+            commands::get_users,
+            commands::admin_create_user,
+            commands::admin_update_user,
+            commands::admin_delete_user,
             // Device management commands
             commands::create_device,
             commands::get_devices,
@@ -64,6 +69,16 @@ pub fn run() {
             commands::run_device_diagnostic,
             commands::get_network_overview,
             commands::get_device_history,
+            // Network Discovery commands
+            commands::start_discovery,
+            commands::stop_discovery,
+            commands::get_discovery_status,
+            // Alerts & Notification commands
+            commands::get_alerts,
+            commands::get_alert_summary,
+            commands::mark_alert_as_read,
+            commands::mark_all_alerts_as_read,
+            commands::mark_alert_as_resolved,
             // Settings commands
             commands::get_settings,
             commands::update_settings,

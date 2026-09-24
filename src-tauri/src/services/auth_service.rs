@@ -55,8 +55,8 @@ impl AuthService {
         validate_username(&req.username)?;
         let password_hash = Self::hash_password(&req.password)?;
 
-        let user = UserRepository::create(pool, &req.username, &password_hash).await?;
-        let (token, expires_at) = sessions.create_session(user.id, &user.username).await;
+        let user = UserRepository::create(pool, &req.username, &password_hash, crate::models::UserRole::Admin).await?;
+        let (token, expires_at) = sessions.create_session(user.id, &user.username, crate::models::UserRole::Admin).await;
 
         Ok(AuthResponse {
             token,
@@ -86,7 +86,8 @@ impl AuthService {
             return Err(AppError::Auth("Invalid username or password".to_string()));
         }
 
-        let (token, expires_at) = sessions.create_session(user.id, &user.username).await;
+        let role = crate::models::UserRole::from(user.role.as_str());
+        let (token, expires_at) = sessions.create_session(user.id, &user.username, role).await;
 
         Ok(AuthResponse {
             token,

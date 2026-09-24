@@ -348,6 +348,39 @@ export const DiagnosticsPage: React.FC<DiagnosticsPageProps> = ({
                 </div>
               </div>
 
+              {/* Degradation or Multi-layer Explanation Banner */}
+              {(diagnosticResult.explanation || diagnosticResult.degradation_reason) && (
+                <div className={`p-4 rounded-xl border text-xs leading-relaxed ${
+                  diagnosticResult.overall_status === "degraded"
+                    ? "bg-amber-500/10 border-amber-500/20 text-amber-900 dark:text-amber-200"
+                    : diagnosticResult.overall_status === "offline"
+                    ? "bg-rose-500/10 border-rose-500/20 text-rose-900 dark:text-rose-200"
+                    : "bg-emerald-500/10 border-emerald-500/20 text-emerald-900 dark:text-emerald-200"
+                }`}>
+                  <div className="font-semibold flex items-center gap-1.5 mb-1">
+                    <AlertTriangle className="h-4 w-4 shrink-0" />
+                    <span>Analyse Explicable du Diagnostic</span>
+                  </div>
+                  {diagnosticResult.explanation && (
+                    <p className="mt-0.5">{diagnosticResult.explanation}</p>
+                  )}
+                  {diagnosticResult.degradation_reason && (
+                    <p className="mt-1 font-mono text-[11px] opacity-90">
+                      Cause de dégradation : {diagnosticResult.degradation_reason}
+                    </p>
+                  )}
+                  {diagnosticResult.latency_stats && (
+                    <div className="mt-2 pt-2 border-t border-current/10 flex flex-wrap gap-4 text-[11px] font-mono">
+                      <span>Moyenne: {diagnosticResult.latency_stats.avg_ms ? `${Math.round(diagnosticResult.latency_stats.avg_ms)} ms` : "N/A"}</span>
+                      <span>Min: {diagnosticResult.latency_stats.min_ms ? `${Math.round(diagnosticResult.latency_stats.min_ms)} ms` : "N/A"}</span>
+                      <span>Max (Pic): {diagnosticResult.latency_stats.max_ms ? `${Math.round(diagnosticResult.latency_stats.max_ms)} ms` : "N/A"}</span>
+                      <span>Échantillons: {diagnosticResult.latency_stats.sample_count}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+
               {/* L3 vs L7 Accordion / Details */}
               <div className="space-y-3">
                 {/* L3 Layer details */}
@@ -383,6 +416,21 @@ export const DiagnosticsPage: React.FC<DiagnosticsPageProps> = ({
                           : "Non disponible"}
                       </span>
                     </div>
+                    {diagnosticResult.l3_diagnostic?.arp && (
+                      <div className="flex justify-between py-1 border-b border-border/50">
+                        <span className="text-muted-foreground">Résolution ARP</span>
+                        <span className="font-mono font-medium">
+                          {diagnosticResult.l3_diagnostic.arp.resolved
+                            ? `Résolu (${diagnosticResult.l3_diagnostic.arp.mac_address || "MAC trouvée"})`
+                            : "Non résolu / Cache introuvable"}
+                        </span>
+                      </div>
+                    )}
+                    {diagnosticResult.l3_diagnostic?.explanation && (
+                      <div className="py-1 text-muted-foreground italic">
+                        {diagnosticResult.l3_diagnostic.explanation}
+                      </div>
+                    )}
                     {diagnosticResult.l3_result.error && (
                       <div className="p-2 rounded bg-rose-500/10 text-rose-600 font-mono mt-1">
                         Erreur : {diagnosticResult.l3_result.error}
@@ -390,6 +438,7 @@ export const DiagnosticsPage: React.FC<DiagnosticsPageProps> = ({
                     )}
                   </div>
                 </AccordionItem>
+
 
                 {/* L7 Layer details */}
                 <AccordionItem

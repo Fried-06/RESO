@@ -33,15 +33,44 @@ export interface ServiceProbeResult {
   error?: string;
 }
 
+export interface ArpResult {
+  ip: string;
+  resolved: boolean;
+  mac_address?: string;
+  error?: string;
+}
+
+export interface L3Diagnostic {
+  ping: PingResult;
+  arp?: ArpResult;
+  status: string;
+  explanation: string;
+}
+
+export interface LatencyStats {
+  current_ms?: number;
+  avg_ms?: number;
+  min_ms?: number;
+  max_ms?: number;
+  sample_count: number;
+  is_degraded: boolean;
+  degradation_explanation?: string;
+}
+
 export interface DiagnosticResult {
   device_id: number;
   device_name: string;
   ip_address: string;
   l3_result: PingResult;
+  l3_diagnostic?: L3Diagnostic;
   l7_results: ServiceProbeResult[];
   overall_status: DeviceStatus;
+  explanation?: string;
+  degradation_reason?: string;
+  latency_stats?: LatencyStats;
   executed_at: string;
 }
+
 
 export interface NetworkOverview {
   total_devices: number;

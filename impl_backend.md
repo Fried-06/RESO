@@ -98,10 +98,14 @@ src-tauri/
     └── commands/               # Frontière IPC Tauri invoquée par React
         ├── mod.rs
         ├── auth.rs             # Commandes d'authentification et bootstrap
+        ├── users.rs            # Commandes d'administration des utilisateurs RBAC (admin uniquement)
         ├── devices.rs          # Commandes CRUD équipements (protégées par session)
         ├── diagnostics.rs      # Commandes de test (ping, tcp, http, diagnostic équipement, overview)
+        ├── alerts.rs           # Commandes de gestion des alertes et résolutions d'incidents
+        ├── discovery.rs        # Commandes de découverte de sous-réseau (scan CIDR asynchrone)
         └── settings.rs         # Commandes de configuration de l'application
 ```
+
 
 ---
 
@@ -284,6 +288,19 @@ Toutes ces commandes sont enregistrées dans le gestionnaire IPC de Tauri et con
 | `get_device_history` | Historique des mesures | `token: string`, `device_id: number`, `limit?: number` | `DiagnosticHistoryRecord[]` | `UNAUTHORIZED`, `DATABASE_ERROR` | `DiagnosticService` |
 | `get_settings` | Récupère la configuration | `token: string` | `SettingsDto` | `UNAUTHORIZED`, `DATABASE_ERROR` | `SettingsService` |
 | `update_settings` | Modifie la configuration | `token: string`, `req: UpdateSettingsRequest` | `SettingsDto` | `UNAUTHORIZED`, `VALIDATION_ERROR` | `SettingsService` |
+| `get_users` | Liste des utilisateurs (RBAC) | `token: string` | `UserDto[]` | `UNAUTHORIZED`, `FORBIDDEN` | `UserService` |
+| `admin_create_user` | Crée un compte (admin) | `token: string`, `req: AdminCreateUserRequest` | `UserDto` | `UNAUTHORIZED`, `FORBIDDEN`, `VALIDATION_ERROR` | `UserService` |
+| `admin_update_user` | Modifie un compte (admin) | `token: string`, `user_id: number`, `req: AdminUpdateUserRequest` | `UserDto` | `UNAUTHORIZED`, `FORBIDDEN`, `NOT_FOUND` | `UserService` |
+| `admin_delete_user` | Supprime un compte (admin) | `token: string`, `user_id: number` | `void` | `UNAUTHORIZED`, `FORBIDDEN`, `NOT_FOUND` | `UserService` |
+| `start_discovery` | Lance la découverte subnet | `token: string`, `req: StartDiscoveryRequest` | `void` | `UNAUTHORIZED`, `VALIDATION_ERROR` | `DiscoveryService` |
+| `stop_discovery` | Interrompt la découverte | `token: string` | `void` | `UNAUTHORIZED` | `DiscoveryService` |
+| `get_discovery_status`| État et machines découvertes | `token: string` | `[DiscoveryProgress, DiscoveredDevice[]]` | `UNAUTHORIZED` | `DiscoveryService` |
+| `get_alerts` | Liste des alertes | `token: string`, `unresolved_only?: bool`, `limit?: number` | `AlertDto[]` | `UNAUTHORIZED`, `DATABASE_ERROR` | `AlertService` |
+| `get_alert_summary` | Synthèse des alertes | `token: string` | `AlertSummary` | `UNAUTHORIZED`, `DATABASE_ERROR` | `AlertService` |
+| `mark_alert_as_read`| Marque une alerte lue | `token: string`, `alert_id: number` | `void` | `UNAUTHORIZED`, `DATABASE_ERROR` | `AlertService` |
+| `mark_all_alerts_as_read`| Marque toutes alertes lues | `token: string` | `void` | `UNAUTHORIZED`, `DATABASE_ERROR` | `AlertService` |
+| `mark_alert_as_resolved`| Résout manuellement une alerte | `token: string`, `alert_id: number` | `void` | `UNAUTHORIZED`, `DATABASE_ERROR` | `AlertService` |
+
 
 ---
 
